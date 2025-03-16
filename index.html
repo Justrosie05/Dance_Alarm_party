@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système de Surveillance avec Poses</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>
+    <style>
+        .pose-container {
+            width: 150px;
+            height: 150px;
+            border-radius: 10px;
+            border: 3px solid transparent;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .pose-container:hover {
+            background: #e5e7eb;
+        }
+        .pose-selected {
+            border-color: #10B981;
+            background: #d1fae5;
+        }
+        .pose-selected:hover {
+            background: #d1fae5;
+        }
+        .pose-svg {
+            width: 100px;
+            height: 100px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <h1 class="text-3xl font-bold text-center mb-8">Système de Surveillance avec Poses</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Section Webcam -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">Caméra</h2>
+                <div class="relative aspect-video">
+                    <video id="video" class="w-full h-full bg-black object-cover" autoplay></video>
+                    <canvas id="canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                </div>
+                <div id="status" class="mt-4 text-center text-gray-700 font-bold"></div>
+                <div id="debug" class="mt-2 text-center text-sm text-gray-500"></div>
+            </div>
+
+            <!-- Section Contrôle -->
+            <div class="bg-white p-6 rounded-lg shadow-lg">
+                <h2 class="text-xl font-semibold mb-4">Contrôle du Système</h2>
+                <div class="flex flex-col items-center gap-6">
+                    <!-- Sélection de la pose avec icônes -->
+                    <div class="w-full">
+                        <label class="block text-gray-700 text-lg font-bold mb-4">
+                            Sélectionner la pose requise :
+                        </label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <!-- Main droite -->
+                            <div class="flex flex-col items-center gap-2">
+                                <div class="pose-container pose-selected" data-pose="mainDroite">
+                                    <svg class="pose-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M13 6.5V4a2 2 0 0 1 2-2v0a2 2 0 0 1 2 2v2.5M17 8.5V4a2 2 0 0 1 2-2v0a2 2 0 0 1 2 2v7.5"/>
+                                        <path d="M9 4v12a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V11"/>
+                                        <path d="M13 16.5V8"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium">Main droite</span>
+                            </div>
+                            
+                            <!-- Main gauche -->
+                            <div class="flex flex-col items-center gap-2">
+                                <div class="pose-container" data-pose="mainGauche">
+                                    <svg class="pose-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 6.5V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2.5M7 8.5V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v7.5"/>
+                                        <path d="M15 4v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V11"/>
+                                        <path d="M11 16.5V8"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium">Main gauche</span>
+                            </div>
+
+                            <!-- Mains sur la tête -->
+                            <div class="flex flex-col items-center gap-2">
+                                <div class="pose-container" data-pose="mainsTete">
+                                    <svg class="pose-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="8" r="4"/>
+                                        <path d="M4 10v2a8 8 0 0 0 16 0v-2"/>
+                                        <path d="M8 14a4 4 0 0 0-4-4"/>
+                                        <path d="M16 14a4 4 0 0 1 4-4"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium">Mains sur la tête</span>
+                            </div>
+
+                            <!-- Bras croisés -->
+                            <div class="flex flex-col items-center gap-2">
+                                <div class="pose-container" data-pose="brasCroises">
+                                    <svg class="pose-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M6 12h12"/>
+                                        <path d="M8 6c0 2.5-2 3.5-2 5 0 1.5 2 2.5 2 5"/>
+                                        <path d="M16 6c0 2.5 2 3.5 2 5 0 1.5-2 2.5-2 5"/>
+                                    </svg>
+                                </div>
+                                <span class="text-sm font-medium">Bras croisés</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="startAlarm" class="bg-green-500 text-white px-8 py-3 rounded-lg hover:bg-green-600 w-full text-lg font-medium">
+                        Activer l'Alarme
+                    </button>
+                    <button id="stopAlarm" class="bg-red-500 text-white px-8 py-3 rounded-lg hover:bg-red-600 w-full text-lg font-medium">
+                        Désactiver l'Alarme
+                    </button>
+                    <div id="alarmStatus" class="text-xl font-medium mt-4">
+                        État: Désactivée
+                    </div>
+                    <div id="poseStatus" class="text-lg text-gray-600 mt-2">
+                        Pose actuelle: Aucune détectée
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
